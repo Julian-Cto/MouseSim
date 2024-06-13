@@ -3,20 +3,17 @@
 #include <string.h>
 #include <tchar.h>
 
-// Global variables
-
 // The main window class name.
 static TCHAR szWindowClass[] = _T("DesktopApp");
-
-// The string that appears in the application's title bar.
-static TCHAR szTitle[] = _T("Windows Desktop Guided Tour Application");
+static TCHAR szTitle[] = _T("pop-up name");// potential name: Rage Mouse - Daniel
 
 // Stored instance handle for use in Win32 API calls such as FindResource
 HINSTANCE hInst;
 
-// Forward declarations of functions included in this code module:
+// This function handles what to do what input from user
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
+// AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -24,8 +21,9 @@ int WINAPI WinMain(
     _In_ int       nCmdShow
 )
 {
+    // class that sets up window with: application icon, the background color of the window, the name to display in the title bar, etc.
     WNDCLASSEX wcex;
-
+    //filling in class
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -38,7 +36,7 @@ int WINAPI WinMain(
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = szWindowClass;
     wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
-
+    //Error check to make sure our class goes through RegisterClassEx()
     if (!RegisterClassEx(&wcex))
     {
         MessageBox(NULL,
@@ -93,7 +91,7 @@ int WINAPI WinMain(
         nCmdShow);
     UpdateWindow(hWnd);
 
-    // Main message loop:
+    // loop gets input from user
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0))
     {

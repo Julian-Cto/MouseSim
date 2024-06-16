@@ -5,6 +5,7 @@
 
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
+const int START = 3;
 
 // The main window class name.
 static TCHAR szWindowClass[] = _T("DesktopApp");
@@ -134,6 +135,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case MENU2:
             break;
+        case START:
+             
+            break;
         }
     case WM_CREATE:
         AddMenu(hWnd);
@@ -186,4 +190,6 @@ void AddControls(HWND hWnd)
     //for some reason ES_MULTILINE is glitched below
     CreateWindowW(L"Edit", L"...", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL , 200, 152, 100, 50, hWnd,
                   NULL, NULL, NULL);
+    CreateWindowW(L"Button", L"Start", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
+                  NULL, NULL);
 }

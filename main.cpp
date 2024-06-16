@@ -20,6 +20,9 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void AddMenu(HWND);
 HMENU hMenu;
 
+// Controls function
+void AddControls(HWND);
+
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -134,6 +137,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
     case WM_CREATE:
         AddMenu(hWnd);
+        AddControls(hWnd);
         break;
 
     case WM_PAINT:
@@ -167,11 +171,19 @@ void AddMenu(HWND hWnd)
 
     HMENU hDropDownMenu = CreateMenu();
 
-    AppendMenu(hDropDownMenu, MF_STRING, DROP_DOWN_MENU_NEW, "new");
-    AppendMenu(hDropDownMenu, MF_SEPARATOR, NULL, NULL);
+    AppendMenu(hDropDownMenu, MF_STRING, DROP_DOWN_MENU_NEW, "new");// Part of the drop down menu 
+    AppendMenu(hDropDownMenu, MF_SEPARATOR, NULL, NULL);// a visable seperator
 
-    AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hDropDownMenu, "Menu1");
+    AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hDropDownMenu, "Menu1");// parameters: (menu object, flag(the type), the value it returns or the drop down menu, the name it displays)
     AppendMenu(hMenu, MF_STRING, MENU2, "Menu2");
 
     SetMenu(hWnd, hMenu);
+}
+void AddControls(HWND hWnd)
+{   // parameters: (tyle (Text Box or Editing box), string it displayes, flags, location x, location y, width, height, parent window, NULL, NULL, NULL)
+    CreateWindowW(L"static", L"Displayed text", WS_VISIBLE | WS_CHILD | WS_BORDER | SS_CENTER, 200, 100, 100, 50, hWnd,
+                  NULL, NULL, NULL);
+    //for some reason ES_MULTILINE is glitched below
+    CreateWindowW(L"Edit", L"...", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL , 200, 152, 100, 50, hWnd,
+                  NULL, NULL, NULL);
 }

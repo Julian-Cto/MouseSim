@@ -3,6 +3,9 @@
 #include <string.h>
 #include <tchar.h>
 
+const int DROP_DOWN_MENU_NEW = 1;
+const int MENU2 = 2;
+
 // The main window class name.
 static TCHAR szWindowClass[] = _T("DesktopApp");
 static TCHAR szTitle[] = _T("pop-up name");// potential name: Rage Mouse - Daniel
@@ -12,6 +15,10 @@ HINSTANCE hInst;
 
 // This function handles what to do what input from user
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+
+// Application menu
+void AddMenu(HWND);
+HMENU hMenu;
 
 // AKA int main(){}
 int WINAPI WinMain(
@@ -67,13 +74,13 @@ int WINAPI WinMain(
         szTitle,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        500, 100,
+        500, 500,
         NULL,
         NULL,
         hInstance,
         NULL
     );
-
+ 
     if (!hWnd)
     {
         MessageBox(NULL,
@@ -116,26 +123,55 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     switch (message)
     {
+    case WM_COMMAND:
+        // Controls what menu items do
+        switch (wParam)
+        {
+        case DROP_DOWN_MENU_NEW:
+            break;
+        case MENU2:
+            break;
+        }
+    case WM_CREATE:
+        AddMenu(hWnd);
+        break;
+
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
 
         // Here your application is laid out.
         // For this introduction, we just print out "Hello, Windows desktop!"
         // in the top left corner.
-        TextOut(hdc,
-            5, 5,
-            greeting, _tcslen(greeting));
+        // TextOut(hdc,5, 5,greeting, _tcslen(greeting));
         // End application-specific layout section.
 
         EndPaint(hWnd, &ps);
         break;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
         break;
+
     }
 
     return 0;
+}
+
+void AddMenu(HWND hWnd)
+{
+    hMenu = CreateMenu();
+
+    HMENU hDropDownMenu = CreateMenu();
+
+    AppendMenu(hDropDownMenu, MF_STRING, DROP_DOWN_MENU_NEW, "new");
+    AppendMenu(hDropDownMenu, MF_SEPARATOR, NULL, NULL);
+
+    AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hDropDownMenu, "Menu1");
+    AppendMenu(hMenu, MF_STRING, MENU2, "Menu2");
+
+    SetMenu(hWnd, hMenu);
 }

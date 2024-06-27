@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
+#include <iostream>
 
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
@@ -125,49 +126,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc;
     TCHAR greeting[] = _T("Hello, Windows desktop!");
 
-    switch (message)
-    {
-    case WM_COMMAND:
+    switch (message) {
+        case WM_COMMAND:
         // Controls what menu items do
-        switch (wParam)
-        {
-        case DROP_DOWN_MENU_NEW:
+        /*switch (wParam) {
+            case DROP_DOWN_MENU_NEW:
+                break;
+            case MENU2:
+                break;
+            case START:
+                break;
+                */
+        case WM_CREATE:
+            AddMenu(hWnd);
+            AddControls(hWnd);
             break;
-        case MENU2:
+
+        case WM_PAINT:
+            hdc = BeginPaint(hWnd, &ps);
+
+            EndPaint(hWnd, &ps);
             break;
-        case START:
-             
+
+        case WM_DESTROY:
+            PostQuitMessage(0);
             break;
-        }
-    case WM_CREATE:
-        AddMenu(hWnd);
-        AddControls(hWnd);
-        break;
-
-    case WM_PAINT:
-        hdc = BeginPaint(hWnd, &ps);
-
-        // Here your application is laid out.
-        // For this introduction, we just print out "Hello, Windows desktop!"
-        // in the top left corner.
-        // TextOut(hdc,5, 5,greeting, _tcslen(greeting));
-        // End application-specific layout section.
-
-        EndPaint(hWnd, &ps);
-        break;
-
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-        break;
-
     }
+    if (GetAsyncKeyState(VK_NUMPAD2))
+    {
+        INPUT mouseInputSim[1] = {};
 
-    return 0;
+        mouseInputSim[0].type = INPUT_MOUSE;
+        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+        SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
+        ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
+        mouseInputSim[0].type = INPUT_MOUSE;
+        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+        SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
+    }
+    return DefWindowProc(hWnd, message, wParam, lParam);
 }
+
 
 void AddMenu(HWND hWnd)
 {
@@ -184,12 +183,12 @@ void AddMenu(HWND hWnd)
     SetMenu(hWnd, hMenu);
 }
 void AddControls(HWND hWnd)
-{   // parameters: (tyle (Text Box or Editing box), string it displayes, flags, location x, location y, width, height, parent window, NULL, NULL, NULL)
+{   // parameters: (style (Text Box or Editing box), string it displayes, flags, location x, location y, width, height, parent window, NULL, NULL, NULL)
     CreateWindowW(L"static", L"Displayed text", WS_VISIBLE | WS_CHILD | WS_BORDER | SS_CENTER, 200, 100, 100, 50, hWnd,
                   NULL, NULL, NULL);
     //for some reason ES_MULTILINE is glitched below
     CreateWindowW(L"Edit", L"...", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL , 200, 152, 100, 50, hWnd,
                   NULL, NULL, NULL);
-    CreateWindowW(L"Button", L"Start", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
+    CreateWindowW(L"Button", L"Start", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU) START,
                   NULL, NULL);
 }

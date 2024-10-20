@@ -2,14 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
+#include <iostream>
 
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
 const int START = 3;
 const int STOP = 4;
 
-enum AutoClick {Disable, Enable};
-AutoClick Auto = Disable;
+int milliseconds = 100;
+
+enum Status { disable, enable };
+Status AutoClick = disable;
 
 // The main window class name.
 static TCHAR szWindowClass[] = _T("DesktopApp");
@@ -27,7 +30,7 @@ HMENU hMenu;
 
 // Controls function
 void AddControls(HWND);
-
+HWND hMilliseconds;
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -88,7 +91,7 @@ int WINAPI WinMain(
         hInstance,
         NULL
     );
- 
+
     if (!hWnd)
     {
         MessageBox(NULL,
@@ -102,17 +105,9 @@ int WINAPI WinMain(
     // The parameters to ShowWindow explained:
     // hWnd: the value returned from CreateWindow
     // nCmdShow: the fourth parameter from WinMain
-    ShowWindow(hWnd, nCmdShow);
+    ShowWindow(hWnd,
+        nCmdShow);
     UpdateWindow(hWnd);
-
-    INPUT mouseClick;
-    mouseClick.type = INPUT_MOUSE;
-    mouseClick.mi.dx = 0;
-    mouseClick.mi.dy = 0;
-    mouseClick.mi.dwFlags = (MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP);
-    mouseClick.mi.mouseData = 0;
-    mouseClick.mi.dwExtraInfo = NULL;
-    mouseClick.mi.time = 0;
 
     // loop gets input from user
     MSG msg;
@@ -120,10 +115,6 @@ int WINAPI WinMain(
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-        if (Auto == Enable)
-        {
-            SendInput(1, &mouseClick, sizeof(INPUT));
-        }
     }
 
     return (int)msg.wParam;
@@ -141,8 +132,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc;
     TCHAR greeting[] = _T("Hello, Windows desktop!");
 
-    switch (message)
-    {
+    switch (message) {
     case WM_COMMAND:
         // Controls what menu items do
         switch (wParam)
@@ -152,56 +142,53 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case MENU2:
             break;
         case START:
-            Auto = Enable;
+            TCHAR inputMilliseconds[4];
+            int addMilliseconds;
+            GetWindowText(hMilliseconds, inputMilliseconds, 4);
+            addMilliseconds = _ttoi(inputMilliseconds);
+            milliseconds = addMilliseconds;
+            AutoClick = enable;
+            Sleep(1000);
             break;
-        case STOP:
-            Auto = Disable;
-            break;
-        }
-    case WM_KEYDOWN:
 
-        switch (wParam)
-        {
-            case VK_SPACE:
-              if (Auto == Enable)
-              {
-                  Auto = Disable;
-              }
-              else
-              {
-                  Auto = Enable;
-              }
-        break;
+        case STOP:
+            AutoClick = disable;
+            break;
+
         }
+        break;
+
     case WM_CREATE:
         AddMenu(hWnd);
         AddControls(hWnd);
         break;
 
-   case WM_PAINT:
-       hdc = BeginPaint(hWnd, &ps);
+    case WM_PAINT:
+        hdc = BeginPaint(hWnd, &ps);
 
-        // Here your application is laid out.
-        // For this introduction, we just print out "Hello, Windows desktop!"
-        // in the top left corner.
-        // TextOut(hdc,5, 5,greeting, _tcslen(greeting));
-        // End application-specific layout section.
+        EndPaint(hWnd, &ps);
+        break;
 
-       EndPaint(hWnd, &ps);
-       break;
-  
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
-
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-        break;
-
     }
 
-    return 0;
+    if (AutoClick == enable)
+    {
+        INPUT mouseInputSim[1] = {};
+
+        mouseInputSim[0].type = INPUT_MOUSE;
+        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+        SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
+        ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
+
+        Sleep(milliseconds);
+    }
+
+    return DefWindowProc(hWnd, message, wParam, lParam);
 }
+
 
 void AddMenu(HWND hWnd)
 {
@@ -209,25 +196,27 @@ void AddMenu(HWND hWnd)
 
     HMENU hDropDownMenu = CreateMenu();
 
-    AppendMenu(hDropDownMenu, MF_STRING, DROP_DOWN_MENU_NEW, "new");// Part of the drop down menu 
-    AppendMenu(hDropDownMenu, MF_SEPARATOR, NULL, NULL);// a visable seperator
+    //AppendMenu(hDropDownMenu, MF_STRING, DROP_DOWN_MENU_NEW, L"new");// Part of the drop down menu 
+    //AppendMenu(hDropDownMenu, MF_SEPARATOR, NULL, NULL);// a visable seperator
 
-    AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hDropDownMenu, "Menu1");// parameters: (menu object, flag(the type), the value it returns or the drop down menu, the name it displays)
-    AppendMenu(hMenu, MF_STRING, MENU2, "Menu2");
+    //AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hDropDownMenu, L"Menu1");// parameters: (menu object, flag(the type), the value it returns or the drop down menu, the name it displays)
+    //AppendMenu(hMenu, MF_STRING, MENU2, L"Menu2");
 
     SetMenu(hWnd, hMenu);
 }
 void AddControls(HWND hWnd)
-{   
-    // parameters: style (Text Box or Editing box), string it displayes, flags, location x, location y, width, height, parent window, NULL, NULL, NULL)
+{   // parameters: (style (Text Box or Editing box), string it displayes, flags, location x, location y, width, height, parent window, NULL, NULL, NULL)
     //CreateWindowW(L"static", L"Displayed text", WS_VISIBLE | WS_CHILD | WS_BORDER | SS_CENTER, 200, 100, 100, 50, hWnd,
-                  //NULL, NULL, NULL);
+        //NULL, NULL, NULL);
     //for some reason ES_MULTILINE is glitched below
-    //CreateWindowW(L"Edit", L"...", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL , 200, 152, 100, 50, hWnd,
-                 // NULL, NULL, NULL);
-
-    CreateWindowW(L"Button", L"Start(R-SHIFT)", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
-                  NULL, NULL);
-    CreateWindowW(L"Button", L"Stop(R-SHIFT)", WS_VISIBLE | WS_CHILD, 200, 256, 100, 50, hWnd, (HMENU)STOP,
+    //CreateWindowW(L"Edit", L"...", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 200, 152, 100, 50, hWnd,
+        //NULL, NULL, NULL);
+    CreateWindowW(L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 50, 50, 85, 20, hWnd,
+        NULL, NULL, NULL);
+    hMilliseconds = CreateWindowW(L"Edit", L"100", WS_VISIBLE | WS_CHILD | WS_BORDER, 140, 50, 30, 20, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"Button", L"Start", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
+        NULL, NULL);
+    CreateWindowW(L"Button", L"Stop", WS_VISIBLE | WS_CHILD, 200, 259, 100, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
 }

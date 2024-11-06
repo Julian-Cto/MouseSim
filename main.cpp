@@ -137,6 +137,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case START:
                 break;
                 */
+        case WM_KEYDOWN:
+            switch (wParam) {
+            case VK_F2:
+                MessageBeep(MB_OK);
+                break;
+            }
+            break;
         case WM_CREATE:
             AddMenu(hWnd);
             AddControls(hWnd);
@@ -163,6 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         mouseInputSim[0].type = INPUT_MOUSE;
         mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTUP;
         SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
+        
     }
     return DefWindowProc(hWnd, message, wParam, lParam);
 }

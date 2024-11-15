@@ -9,7 +9,7 @@ const int MENU2 = 2;
 const int START = 3;
 const int STOP = 4;
 
-int milliseconds = 100;
+int interval = 100;
 
 enum Status { disable, enable };
 Status AutoClick = disable;
@@ -146,7 +146,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             int addMilliseconds;
             GetWindowText(hMilliseconds, inputMilliseconds, 4);
             addMilliseconds = _ttoi(inputMilliseconds);
-            milliseconds = addMilliseconds;
+            interval = addMilliseconds;
+            if (interval < 100) {//in case milliseconds
+                interval = 100;
+            }
             AutoClick = enable;
             Sleep(1000);
             break;
@@ -183,7 +186,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
         ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
 
-        Sleep(milliseconds);
+        Sleep(interval);
     }
 
     return DefWindowProc(hWnd, message, wParam, lParam);

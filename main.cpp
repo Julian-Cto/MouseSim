@@ -135,36 +135,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message) {
     case WM_COMMAND:
         // Controls what menu items do
-        switch (wParam)
-        {
-        case DROP_DOWN_MENU_NEW:
-            break;
-        case MENU2:
-            break;
-        case START:
-            TCHAR inputMilliseconds[4];
-            int addMilliseconds;
-            GetWindowText(hMilliseconds, inputMilliseconds, 4);
-            addMilliseconds = _ttoi(inputMilliseconds);
-            interval = addMilliseconds;
-            if (interval < 100) {//in case milliseconds
-                interval = 100;
+        /*switch (wParam) {
+            case DROP_DOWN_MENU_NEW:
+                break;
+            case MENU2:
+                break;
+            case START:
+                break;
+                */
+        case WM_KEYDOWN:
+            switch (wParam) {
+            case VK_F2:
+                MessageBeep(MB_OK);
+                break;
             }
-            AutoClick = enable;
-            Sleep(1000);
             break;
-
-        case STOP:
-            AutoClick = disable;
+        case WM_CREATE:
+            AddMenu(hWnd);
+            AddControls(hWnd);
             break;
-
-        }
-        break;
-
-    case WM_CREATE:
-        AddMenu(hWnd);
-        AddControls(hWnd);
-        break;
 
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
@@ -185,8 +174,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
         SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
         ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
-
-        Sleep(interval);
+        mouseInputSim[0].type = INPUT_MOUSE;
+        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+        SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
     }
 
     return DefWindowProc(hWnd, message, wParam, lParam);

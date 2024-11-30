@@ -133,27 +133,53 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     TCHAR greeting[] = _T("Hello, Windows desktop!");
 
     switch (message) {
-    case WM_COMMAND:
-        // Controls what menu items do
-        /*switch (wParam) {
-            case DROP_DOWN_MENU_NEW:
-                break;
-            case MENU2:
-                break;
-            case START:
-                break;
-                */
-        case WM_KEYDOWN:
-            switch (wParam) {
-            case VK_F2:
-                MessageBeep(MB_OK);
-                break;
+    case WM_KEYDOWN://controls keyboard input
+        switch (wParam) {
+        case VK_F2:
+            TCHAR inputMilliseconds[4];
+            int addMilliseconds;
+            GetWindowText(hMilliseconds, inputMilliseconds, 4);
+            addMilliseconds = _ttoi(inputMilliseconds);
+            interval = addMilliseconds;
+            if (interval < 100) {//in case milliseconds
+                interval = 100;
             }
+            AutoClick = enable;
+            Sleep(1000);
             break;
-        case WM_CREATE:
-            AddMenu(hWnd);
-            AddControls(hWnd);
+        }
+    case WM_COMMAND:// Controls what menu items do
+        switch (wParam)
+        {
+
+        case DROP_DOWN_MENU_NEW:
             break;
+        case MENU2:
+            break;
+        case START:
+            TCHAR inputMilliseconds[4];
+            int addMilliseconds;
+            GetWindowText(hMilliseconds, inputMilliseconds, 4);
+            addMilliseconds = _ttoi(inputMilliseconds);
+            interval = addMilliseconds;
+            if (interval < 100) {//in case milliseconds = 0
+                interval = 100;
+            }
+            AutoClick = enable;
+            Sleep(1000);
+            break;
+
+        case STOP:
+            AutoClick = disable;
+            break;
+
+        }
+        break;
+
+    case WM_CREATE:
+        AddMenu(hWnd);
+        AddControls(hWnd);
+        break;
 
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
@@ -164,21 +190,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
-    }
 
+    }
     if (AutoClick == enable)
     {
-        INPUT mouseInputSim[1] = {};
+        while (true)
+        {
+            INPUT mouseInputSim[2] = {};
+            ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
+            mouseInputSim[0].type = INPUT_MOUSE;
+            mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 
-        mouseInputSim[0].type = INPUT_MOUSE;
-        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-        SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
-        ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
-        mouseInputSim[0].type = INPUT_MOUSE;
-        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-        SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(mouseInputSim));
+            mouseInputSim[1].type = INPUT_MOUSE;
+            mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+            SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
+
+            Sleep(100);
+
+            if (GetAsyncKeyState(VK_F3)) {
+                AutoClick = disable;
+                break;
+            }
+        }
     }
-
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
@@ -208,8 +242,8 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     hMilliseconds = CreateWindowW(L"Edit", L"100", WS_VISIBLE | WS_CHILD | WS_BORDER, 140, 50, 30, 20, hWnd,
         NULL, NULL, NULL);
-    CreateWindowW(L"Button", L"Start", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
+    CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
         NULL, NULL);
-    CreateWindowW(L"Button", L"Stop", WS_VISIBLE | WS_CHILD, 200, 259, 100, 50, hWnd, (HMENU)STOP,
+    CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 200, 259, 100, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
 }

@@ -3,20 +3,22 @@
 #include <string.h>
 #include <tchar.h>
 #include <iostream>
+#include <thread>
 
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
 const int START = 3;
 const int STOP = 4;
 
-int interval = 100;
+DWORD interval = 100;
 
 enum Status { disable, enable };
 Status AutoClick = disable;
+Status Pause = disable;
 
 // The main window class name.
-static TCHAR szWindowClass[] = _T("DesktopApp");
-static TCHAR szTitle[] = _T("pop-up name");// potential name: Rage Mouse - Daniel
+static TCHAR szWindowClass[] = _T("Clicmate");
+static TCHAR szTitle[] = _T("Clicmate");// potential name: Rage Mouse - Daniel
 
 // Stored instance handle for use in Win32 API calls such as FindResource
 HINSTANCE hInst;
@@ -111,7 +113,7 @@ int WINAPI WinMain(
 
     // loop gets input from user
     MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0))
+    while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -130,7 +132,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     PAINTSTRUCT ps;
     HDC hdc;
-    TCHAR greeting[] = _T("Hello, Windows desktop!");
 
     switch (message) {
     case WM_KEYDOWN://controls keyboard input
@@ -145,9 +146,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 interval = 100;
             }
             AutoClick = enable;
-            Sleep(1000);
+            Sleep(100);
+            break;
+        case VK_F3:
+            AutoClick = disable;
+            if (Pause) {
+                Pause = disable;
+            }
             break;
         }
+
     case WM_COMMAND:// Controls what menu items do
         switch (wParam)
         {
@@ -166,11 +174,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 interval = 100;
             }
             AutoClick = enable;
-            Sleep(1000);
+            Sleep(100);
             break;
 
         case STOP:
             AutoClick = disable;
+            if (Pause) {
+                Pause = disable;
+            }
             break;
 
         }
@@ -192,25 +203,46 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     }
+    if (Pause == enable) {
+        POINT cursorPos;
+        HWND winAppHwnd = FindWindowA(0, "Clicmate");
+        GetCursorPos(&cursorPos);
+        HWND currentHwnd = WindowFromPoint(cursorPos);
+        if (!(currentHwnd == winAppHwnd)) {
+            AutoClick = enable;
+            Pause = disable;
+        }
+    }
     if (AutoClick == enable)
     {
-        while (true)
+        INPUT mouseInputSim[2] = {};
+        ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
+        mouseInputSim[0].type = INPUT_MOUSE;
+        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+        mouseInputSim[1].type = INPUT_MOUSE;
+        mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+        while (AutoClick == enable)
         {
-            INPUT mouseInputSim[2] = {};
-            ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
-            mouseInputSim[0].type = INPUT_MOUSE;
-            mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-
-            mouseInputSim[1].type = INPUT_MOUSE;
-            mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-            SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
-
-            Sleep(100);
-
-            if (GetAsyncKeyState(VK_F3)) {
+            POINT cursorPos;
+            HWND winAppHwnd = FindWindowA(0, "Clicmate");
+            GetCursorPos(&cursorPos);
+            HWND currentHwnd = WindowFromPoint(cursorPos);
+            if (currentHwnd == winAppHwnd) {
+                Pause = enable;
                 AutoClick = disable;
-                break;
             }
+            else {
+                std::thread t(SendInput, ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
+                t.join();
+            }
+            if (GetAsyncKeyState(VK_F3)) {
+                if (Pause) {
+                    Pause = disable;
+                }
+                AutoClick = disable;
+            }
+            Sleep(interval);
         }
     }
     return DefWindowProc(hWnd, message, wParam, lParam);

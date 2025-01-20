@@ -26,6 +26,7 @@ HINSTANCE hInst;
 // This function handles what to do what input from user
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
+
 // Application menu
 void AddMenu(HWND);
 HMENU hMenu;
@@ -33,6 +34,7 @@ HMENU hMenu;
 // Controls function
 void AddControls(HWND);
 HWND hMilliseconds;
+HWND parentHwnd;
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -103,7 +105,7 @@ int WINAPI WinMain(
 
         return 1;
     }
-
+    parentHwnd = hWnd;
     // The parameters to ShowWindow explained:
     // hWnd: the value returned from CreateWindow
     // nCmdShow: the fourth parameter from WinMain
@@ -201,49 +203,66 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
-
-    }
-    if (Pause == enable) {
-        POINT cursorPos;
-        HWND winAppHwnd = FindWindowA(0, "Clicmate");
-        GetCursorPos(&cursorPos);
-        HWND currentHwnd = WindowFromPoint(cursorPos);
-        if (!(currentHwnd == winAppHwnd)) {
-            AutoClick = enable;
-            Pause = disable;
-        }
-    }
-    if (AutoClick == enable)
-    {
-        INPUT mouseInputSim[2] = {};
-        ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
-        mouseInputSim[0].type = INPUT_MOUSE;
-        mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-
-        mouseInputSim[1].type = INPUT_MOUSE;
-        mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-        while (AutoClick == enable)
-        {
+    default:
+        if (Pause == enable) {
             POINT cursorPos;
-            HWND winAppHwnd = FindWindowA(0, "Clicmate");
             GetCursorPos(&cursorPos);
-            HWND currentHwnd = WindowFromPoint(cursorPos);
-            if (currentHwnd == winAppHwnd) {
-                Pause = enable;
-                AutoClick = disable;
+            ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
+            HWND currentChildHwnd = ChildWindowFromPoint(parentHwnd, cursorPos);
+            HWND currentParentHwnd;
+            if (currentChildHwnd != parentHwnd)
+            {
+                currentParentHwnd = GetParent(currentChildHwnd);
             }
             else {
-                std::thread t(SendInput, ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
-                t.join();
+                currentParentHwnd = currentChildHwnd;
             }
-            if (GetAsyncKeyState(VK_F3)) {
-                if (Pause) {
-                    Pause = disable;
-                }
-                AutoClick = disable;
+            if (currentParentHwnd != parentHwnd) {
+                AutoClick = enable;
+                Pause = disable;
             }
-            Sleep(interval);
         }
+        while (AutoClick == enable && Pause == disable)
+        {
+                INPUT mouseInputSim[2] = {};
+                ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
+                mouseInputSim[0].type = INPUT_MOUSE;
+                mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+                mouseInputSim[1].type = INPUT_MOUSE;
+                mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                if (AutoClick == enable)
+                {
+                    POINT cursorPos;
+                    GetCursorPos(&cursorPos);
+                    ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
+                    HWND currentChildHwnd = ChildWindowFromPoint(parentHwnd, cursorPos);
+                    HWND currentParentHwnd;
+                    if (currentChildHwnd != parentHwnd)
+                    {
+                        currentParentHwnd = GetParent(currentChildHwnd);
+                    }
+                    else {
+                        currentParentHwnd = currentChildHwnd;
+                    }
+                    if (currentParentHwnd == parentHwnd) {
+                        AutoClick = disable;
+                        Pause = enable;
+                    }
+                    else {
+                        std::thread t(SendInput, ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
+                        t.join();
+                    }
+                    if (GetAsyncKeyState(VK_F3)) {
+                        if (Pause) {
+                            Pause = disable;
+                        }
+                        AutoClick = disable;
+                    }
+                    Sleep(interval);
+                }
+        }
+        break;
     }
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
@@ -264,12 +283,7 @@ void AddMenu(HWND hWnd)
     SetMenu(hWnd, hMenu);
 }
 void AddControls(HWND hWnd)
-{   // parameters: (style (Text Box or Editing box), string it displayes, flags, location x, location y, width, height, parent window, NULL, NULL, NULL)
-    //CreateWindowW(L"static", L"Displayed text", WS_VISIBLE | WS_CHILD | WS_BORDER | SS_CENTER, 200, 100, 100, 50, hWnd,
-        //NULL, NULL, NULL);
-    //for some reason ES_MULTILINE is glitched below
-    //CreateWindowW(L"Edit", L"...", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, 200, 152, 100, 50, hWnd,
-        //NULL, NULL, NULL);
+{   
     CreateWindowW(L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 50, 50, 85, 20, hWnd,
         NULL, NULL, NULL);
     hMilliseconds = CreateWindowW(L"Edit", L"100", WS_VISIBLE | WS_CHILD | WS_BORDER, 140, 50, 30, 20, hWnd,

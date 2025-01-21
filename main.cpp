@@ -9,9 +9,7 @@ const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
 const int START = 3;
 const int STOP = 4;
-
-DWORD interval = 100;
-
+const int MILLISECONDS_IN_A_DAY = 86400000;
 enum Status { disable, enable };
 Status AutoClick = disable;
 Status Pause = disable;
@@ -23,9 +21,11 @@ static TCHAR szTitle[] = _T("Clicmate");// potential name: Rage Mouse - Daniel
 // Stored instance handle for use in Win32 API calls such as FindResource
 HINSTANCE hInst;
 
+HANDLE hThread;
+
 // This function handles what to do what input from user
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-
+DWORD WINAPI clickingThreadFunc(LPVOID lpParam);
 
 // Application menu
 void AddMenu(HWND);
@@ -34,7 +34,12 @@ HMENU hMenu;
 // Controls function
 void AddControls(HWND);
 HWND hMilliseconds;
+HWND hSeconds;
+HWND hMinutes;
+HWND hHours;
 HWND parentHwnd;
+DWORD interval;
+void GetInterval(DWORD &interval);
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -167,14 +172,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case MENU2:
             break;
         case START:
-            TCHAR inputMilliseconds[4];
-            int addMilliseconds;
-            GetWindowText(hMilliseconds, inputMilliseconds, 4);
-            addMilliseconds = _ttoi(inputMilliseconds);
-            interval = addMilliseconds;
-            if (interval < 100) {//in case milliseconds = 0
-                interval = 100;
-            }
+            GetInterval(interval);
             AutoClick = enable;
             Sleep(100);
             break;
@@ -224,15 +222,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         while (AutoClick == enable && Pause == disable)
         {
-                INPUT mouseInputSim[2] = {};
-                ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
-                mouseInputSim[0].type = INPUT_MOUSE;
-                mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-
-                mouseInputSim[1].type = INPUT_MOUSE;
-                mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                if (AutoClick == enable)
-                {
                     POINT cursorPos;
                     GetCursorPos(&cursorPos);
                     ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
@@ -250,8 +239,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         Pause = enable;
                     }
                     else {
-                        std::thread t(SendInput, ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
-                        t.join();
+                        if(!hThread)
+                        {
+                            hThread = CreateThread(
+                                NULL,                   // default security attributes
+                                0,                      // use default stack size  
+                                clickingThreadFunc,       // thread function name
+                                NULL,                   // argument to thread function 
+                                0,                      // use default creation flags 
+                                NULL);
+                        }
+                        DWORD threadStatus = WaitForSingleObject(hThread, 0);
+                        if (threadStatus == WAIT_OBJECT_0) {
+                            CloseHandle(hThread);
+                            hThread = NULL;
+                        }
                     }
                     if (GetAsyncKeyState(VK_F3)) {
                         if (Pause) {
@@ -259,8 +261,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         }
                         AutoClick = disable;
                     }
-                    Sleep(interval);
-                }
         }
         break;
     }
@@ -288,8 +288,64 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     hMilliseconds = CreateWindowW(L"Edit", L"100", WS_VISIBLE | WS_CHILD | WS_BORDER, 140, 50, 30, 20, hWnd,
         NULL, NULL, NULL);
+    CreateWindowW(L"static", L"seconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 170, 50, 60, 20, hWnd,
+        NULL, NULL, NULL);
+    hSeconds = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 235, 50, 20, 20, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"static", L"minutes:", WS_VISIBLE | WS_CHILD | SS_CENTER, 255, 50, 60, 20, hWnd,
+        NULL, NULL, NULL);
+    hMinutes = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 320, 50, 20, 20, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"static", L"hours:", WS_VISIBLE | WS_CHILD | SS_CENTER, 340, 50, 45, 20, hWnd,
+        NULL, NULL, NULL);
+    hHours = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 390, 50, 20, 20, hWnd,
+        NULL, NULL, NULL);
     CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
         NULL, NULL);
     CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 200, 259, 100, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
+}
+DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {
+    INPUT mouseInputSim[2] = {};
+    ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
+    mouseInputSim[0].type = INPUT_MOUSE;
+    mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+
+    mouseInputSim[1].type = INPUT_MOUSE;
+    mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
+    
+    Sleep(interval);
+
+    return 0;
+}
+void GetInterval(DWORD &interval) {
+    interval = 0;
+
+    TCHAR userInput[4];
+    int addMilliseconds;
+    GetWindowText(hMilliseconds, userInput, 4);
+    addMilliseconds = _ttoi(userInput);
+    interval += addMilliseconds;
+
+    int addSeconds;
+    GetWindowText(hSeconds, userInput, 3);
+    addSeconds = _ttoi(userInput);
+    interval += addSeconds * 1000;
+
+    int addMinutes;
+    GetWindowText(hMinutes, userInput, 3);
+    addMinutes = _ttoi(userInput);
+    interval += addMinutes * 60000;
+
+    int addHours;
+    GetWindowText(hHours, userInput, 3);
+    addHours = _ttoi(userInput);
+    interval += addHours * 3600000;
+    if (interval > MILLISECONDS_IN_A_DAY) {
+        interval = MILLISECONDS_IN_A_DAY;
+    }
+    if (interval < 100) {//in case milliseconds = 0
+        interval = 100;
+    }
 }

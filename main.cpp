@@ -4,6 +4,7 @@
 #include <tchar.h>
 #include <iostream>
 #include <thread>
+#include "resource.h"
 
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
@@ -14,9 +15,10 @@ enum Status { disable, enable };
 Status AutoClick = disable;
 Status Pause = disable;
 
+HBRUSH hbrBkgnd = NULL;
 // The main window class name.
 static TCHAR szWindowClass[] = _T("Clicmate");
-static TCHAR szTitle[] = _T("Clicmate");// potential name: Rage Mouse - Daniel
+static TCHAR szTitle[] = _T("MouseSiml");// potential name: Rage Mouse - Daniel
 
 // Stored instance handle for use in Win32 API calls such as FindResource
 HINSTANCE hInst;
@@ -57,12 +59,12 @@ int WINAPI WinMain(
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
-    wcex.hIcon = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = szWindowClass;
-    wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+    wcex.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
     //Error check to make sure our class goes through RegisterClassEx()
     if (!RegisterClassEx(&wcex))
     {
@@ -190,7 +192,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         AddMenu(hWnd);
         AddControls(hWnd);
+        hbrBkgnd = CreateSolidBrush(RGB(255, 255, 255)); // Create a white brush
         break;
+    case WM_CTLCOLORSTATIC:
+        hdc = (HDC)wParam;
+        SetBkColor(hdc, RGB(255, 255, 255)); // Set the background color to white
+        return (INT_PTR)hbrBkgnd;
 
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
@@ -199,6 +206,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_DESTROY:
+        if (hbrBkgnd) {
+            DeleteObject(hbrBkgnd); // Clean up the brush
+        }
         PostQuitMessage(0);
         break;
     default:
@@ -284,7 +294,9 @@ void AddMenu(HWND hWnd)
 }
 void AddControls(HWND hWnd)
 {   
-    CreateWindowW(L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 50, 50, 85, 20, hWnd,
+    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT, 50, 20, 60, 50, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW( L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER , 50, 50, 85, 20, hWnd,
         NULL, NULL, NULL);
     hMilliseconds = CreateWindowW(L"Edit", L"100", WS_VISIBLE | WS_CHILD | WS_BORDER, 140, 50, 30, 20, hWnd,
         NULL, NULL, NULL);
@@ -300,9 +312,9 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     hHours = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 390, 50, 20, 20, hWnd,
         NULL, NULL, NULL);
-    CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 200, 204, 100, 50, hWnd, (HMENU)START,
+    CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 75, 260, 175, 50, hWnd, (HMENU)START,
         NULL, NULL);
-    CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 200, 259, 100, 50, hWnd, (HMENU)STOP,
+    CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 250, 260, 175, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
 }
 DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {

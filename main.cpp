@@ -41,7 +41,7 @@ HWND hMinutes;
 HWND hHours;
 HWND parentHwnd;
 DWORD interval;
-void GetInterval(DWORD &interval);
+void GetInterval(DWORD& interval);
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -201,7 +201,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_PAINT:
         hdc = BeginPaint(hWnd, &ps);
-
+        MoveToEx(hdc, 50, 40, NULL);
+        LineTo(hdc, 410, 40);
         EndPaint(hWnd, &ps);
         break;
 
@@ -232,45 +233,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         while (AutoClick == enable && Pause == disable)
         {
-                    POINT cursorPos;
-                    GetCursorPos(&cursorPos);
-                    ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
-                    HWND currentChildHwnd = ChildWindowFromPoint(parentHwnd, cursorPos);
-                    HWND currentParentHwnd;
-                    if (currentChildHwnd != parentHwnd)
-                    {
-                        currentParentHwnd = GetParent(currentChildHwnd);
-                    }
-                    else {
-                        currentParentHwnd = currentChildHwnd;
-                    }
-                    if (currentParentHwnd == parentHwnd) {
-                        AutoClick = disable;
-                        Pause = enable;
-                    }
-                    else {
-                        if(!hThread)
-                        {
-                            hThread = CreateThread(
-                                NULL,                   // default security attributes
-                                0,                      // use default stack size  
-                                clickingThreadFunc,       // thread function name
-                                NULL,                   // argument to thread function 
-                                0,                      // use default creation flags 
-                                NULL);
-                        }
-                        DWORD threadStatus = WaitForSingleObject(hThread, 0);
-                        if (threadStatus == WAIT_OBJECT_0) {
-                            CloseHandle(hThread);
-                            hThread = NULL;
-                        }
-                    }
-                    if (GetAsyncKeyState(VK_F3)) {
-                        if (Pause) {
-                            Pause = disable;
-                        }
-                        AutoClick = disable;
-                    }
+            POINT cursorPos;
+            GetCursorPos(&cursorPos);
+            ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
+            HWND currentChildHwnd = ChildWindowFromPoint(parentHwnd, cursorPos);
+            HWND currentParentHwnd;
+            if (currentChildHwnd != parentHwnd)
+            {
+                currentParentHwnd = GetParent(currentChildHwnd);
+            }
+            else {
+                currentParentHwnd = currentChildHwnd;
+            }
+            if (currentParentHwnd == parentHwnd) {
+                AutoClick = disable;
+                Pause = enable;
+            }
+            else {
+                if (!hThread)
+                {
+                    hThread = CreateThread(
+                        NULL,                   // default security attributes
+                        0,                      // use default stack size  
+                        clickingThreadFunc,       // thread function name
+                        NULL,                   // argument to thread function 
+                        0,                      // use default creation flags 
+                        NULL);
+                }
+                DWORD threadStatus = WaitForSingleObject(hThread, 0);
+                if (threadStatus == WAIT_OBJECT_0) {
+                    CloseHandle(hThread);
+                    hThread = NULL;
+                }
+            }
+            if (GetAsyncKeyState(VK_F3)) {
+                if (Pause) {
+                    Pause = disable;
+                }
+                AutoClick = disable;
+            }
         }
         break;
     }
@@ -293,10 +294,10 @@ void AddMenu(HWND hWnd)
     SetMenu(hWnd, hMenu);
 }
 void AddControls(HWND hWnd)
-{   
-    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT, 50, 20, 60, 50, hWnd,
+{
+    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT, 50, 20, 60, 20, hWnd,
         NULL, NULL, NULL);
-    CreateWindowW( L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER , 50, 50, 85, 20, hWnd,
+    CreateWindowW(L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 50, 50, 85, 20, hWnd,
         NULL, NULL, NULL);
     hMilliseconds = CreateWindowW(L"Edit", L"100", WS_VISIBLE | WS_CHILD | WS_BORDER, 140, 50, 30, 20, hWnd,
         NULL, NULL, NULL);
@@ -326,12 +327,12 @@ DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {
     mouseInputSim[1].type = INPUT_MOUSE;
     mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
     SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
-    
+
     Sleep(interval);
 
     return 0;
 }
-void GetInterval(DWORD &interval) {
+void GetInterval(DWORD& interval) {
     interval = 0;
 
     TCHAR userInput[4];

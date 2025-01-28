@@ -1,19 +1,21 @@
-#include <windows.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
-#include <iostream>
-#include <thread>
 #include "resource.h"
-
+#include "mouseClicks.h"
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
 const int START = 3;
 const int STOP = 4;
+const int MOUSE_BUTTON_SELECT = 5;
+const int LEFT_BUTTON = 6;
+const int RIGHT_BUTTON = 7;
 const int MILLISECONDS_IN_A_DAY = 86400000;
 enum Status { disable, enable };
 Status AutoClick = disable;
 Status Pause = disable;
+
+MouseClick userMouse;
 
 HBRUSH hbrBkgnd = NULL;
 // The main window class name.
@@ -173,12 +175,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case MENU2:
             break;
+        case LEFT_BUTTON:
+            userMouse.SetLeftClick();
+            break;
+        case RIGHT_BUTTON:
+            userMouse.SetRightClick();
+            break;
         case START:
             GetInterval(interval);
             AutoClick = enable;
             Sleep(100);
             break;
-
         case STOP:
             AutoClick = disable;
             if (Pause) {
@@ -203,6 +210,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         hdc = BeginPaint(hWnd, &ps);
         MoveToEx(hdc, 50, 40, NULL);
         LineTo(hdc, 410, 40);
+        MoveToEx(hdc, 50, 75, NULL);
+        LineTo(hdc, 410, 75);
         EndPaint(hWnd, &ps);
         break;
 
@@ -313,20 +322,22 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     hHours = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 390, 50, 20, 20, hWnd,
         NULL, NULL, NULL);
+    CreateWindowW(L"Button", L"Mouse Button", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 50, 80, 110, 75, hWnd, 
+        NULL, NULL, NULL);
+    HWND hLeftButton = CreateWindowW(L"Button", L"left-click", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,60, 100, 80, 20, hWnd,
+        (HMENU)LEFT_BUTTON, NULL, NULL);
+    CreateWindowW(L"Button", L"right-click", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 60, 125, 80, 20, hWnd,
+        (HMENU)LEFT_BUTTON, NULL, NULL);
     CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 75, 260, 175, 50, hWnd, (HMENU)START,
         NULL, NULL);
     CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 250, 260, 175, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
+
+    SendMessage(hLeftButton, BM_SETCHECK, BST_CHECKED, 0);
 }
 DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {
-    INPUT mouseInputSim[2] = {};
-    ZeroMemory(mouseInputSim, sizeof(mouseInputSim));
-    mouseInputSim[0].type = INPUT_MOUSE;
-    mouseInputSim[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-
-    mouseInputSim[1].type = INPUT_MOUSE;
-    mouseInputSim[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-    SendInput(ARRAYSIZE(mouseInputSim), mouseInputSim, sizeof(INPUT));
+    
+    userMouse.Click();
 
     Sleep(interval);
 

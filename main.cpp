@@ -4,6 +4,8 @@
 #include "resource.h"
 #include "mouseClicks.h"
 
+bool mouseClickMode;
+bool mouseDownMode;
 const int DROP_DOWN_MENU_NEW = 1;
 const int MENU2 = 2;
 const int START = 3;
@@ -14,6 +16,7 @@ const int RIGHT_BUTTON = 7;
 const int MOUSE_CLICK = 8;
 const int MOUSE_DOWN = 9;
 const int MILLISECONDS_IN_A_DAY = 86400000;
+const int IDT_TIMER1 = 10;
 enum Status { disable, enable };
 Status AutoClick = disable;
 Status Pause = disable;
@@ -22,7 +25,7 @@ MouseClick userMouse;
 
 HBRUSH hbrBkgnd = NULL;
 // The main window class name.
-static TCHAR szWindowClass[] = _T("Clicmate");
+static TCHAR szWindowClass[] = _T("MouseSiml");
 static TCHAR szTitle[] = _T("MouseSiml");// potential name: Rage Mouse - Daniel
 
 // Stored instance handle for use in Win32 API calls such as FindResource
@@ -148,21 +151,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc;
 
     switch (message) {
-    case WM_KEYDOWN://controls keyboard input
-        switch (wParam) {
-        case VK_F2:
-            GetInterval(interval);
-            userMouse.SetInterval(interval);
-            AutoClick = enable;
-            Sleep(100);
-            break;
-        case VK_F3:
-            AutoClick = disable;
-            if (Pause) {
-                Pause = disable;
-            }
-            break;
-        }
 
     case WM_COMMAND:// Controls what menu items do
         switch (wParam)
@@ -185,22 +173,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
         case START:
             GetInterval(interval);
-			userMouse.SetInterval(interval);
+            mouseClickMode = userMouse.IsClickModeOn();
+            mouseDownMode = userMouse.IsDownModeOn();
             AutoClick = enable;
+            if (!hThread)
+            {
+                hThread = CreateThread(
+                    NULL,                   // default security attributes
+                    0,                      // use default stack size  
+                    clickingThreadFunc,       // thread function name
+                    NULL,                   // argument to thread function 
+                    0,                      // use default creation flags 
+                    NULL);
+            }
+            SetTimer(hWnd, IDT_TIMER1, 5000, NULL);
             Sleep(100);
+
             break;
         case STOP:
             AutoClick = disable;
             if (Pause) {
                 Pause = disable;
             }
+            CloseHandle(hThread);
             break;
 
         }
         break;
-
+    case WM_TIMER:
+        AutoClick = disable;
+        if (Pause) {
+            Pause = disable;
+        }
+        break;
     case WM_CREATE:
-        //AddMenu(hWnd);
+        AddMenu(hWnd);
         AddControls(hWnd);
         hbrBkgnd = CreateSolidBrush(RGB(255, 255, 255)); // Create a white brush
         break;
@@ -210,17 +217,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return (INT_PTR)hbrBkgnd;
 
     case WM_PAINT:
+    {
         hdc = BeginPaint(hWnd, &ps);
-        MoveToEx(hdc, 50, 40, NULL);
-        LineTo(hdc, 410, 40);
+
+        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+        MoveToEx(hdc, 50, 45, NULL);
+        LineTo(hdc, 410, 45);
         MoveToEx(hdc, 50, 75, NULL);
         LineTo(hdc, 410, 75);
+
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hPen);
+
         EndPaint(hWnd, &ps);
         break;
+    }
 
     case WM_DESTROY:
         if (hbrBkgnd) {
             DeleteObject(hbrBkgnd); // Clean up the brush
+        }
+        if(hThread)
+        {
+            CloseHandle(hThread); //close clicking thread if it exist
         }
         PostQuitMessage(0);
         break;
@@ -239,11 +259,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 currentParentHwnd = currentChildHwnd;
             }
             if (currentParentHwnd != parentHwnd) {
-                AutoClick = enable;
                 Pause = disable;
+                break;
             }
         }
-        while (AutoClick == enable && Pause == disable)
+        if(AutoClick == enable && Pause == disable)
         {
             POINT cursorPos;
             GetCursorPos(&cursorPos);
@@ -258,32 +278,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 currentParentHwnd = currentChildHwnd;
             }
             if (currentParentHwnd == parentHwnd) {
-                AutoClick = disable;
                 Pause = enable;
+                break;
             }
-            else {
-                if (!hThread)
-                {
-                    hThread = CreateThread(
-                        NULL,                   // default security attributes
-                        0,                      // use default stack size  
-                        clickingThreadFunc,       // thread function name
-                        NULL,                   // argument to thread function 
-                        0,                      // use default creation flags 
-                        NULL);
-                }
-                DWORD threadStatus = WaitForSingleObject(hThread, 0);
-                if (threadStatus == WAIT_OBJECT_0) {
-                    CloseHandle(hThread);
-                    hThread = NULL;
-                }
-            }
-            if (GetAsyncKeyState(VK_F3)) {
-                if (Pause) {
-                    Pause = disable;
-                }
-                AutoClick = disable;
-            }
+        }
+        if (hThread && AutoClick == disable) {
+            CloseHandle(hThread);
+            hThread = NULL;
         }
         break;
     }
@@ -307,7 +308,7 @@ void AddMenu(HWND hWnd)
 }
 void AddControls(HWND hWnd)
 {
-    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT, 50, 20, 60, 20, hWnd,
+    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT, 50, 30, 60, 15, hWnd,
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 50, 50, 85, 20, hWnd,
         NULL, NULL, NULL);
@@ -315,16 +316,16 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"seconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 170, 50, 60, 20, hWnd,
         NULL, NULL, NULL);
-    hSeconds = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 235, 50, 20, 20, hWnd,
+    hSeconds = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 235, 50, 20, 20, hWnd,
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"minutes:", WS_VISIBLE | WS_CHILD | SS_CENTER, 255, 50, 60, 20, hWnd,
         NULL, NULL, NULL);
-    hMinutes = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 320, 50, 20, 20, hWnd,
+    hMinutes = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 320, 50, 20, 20, hWnd,
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"hours:", WS_VISIBLE | WS_CHILD | SS_CENTER, 340, 50, 45, 20, hWnd,
         NULL, NULL, NULL);
-    hHours = CreateWindowW(L"Edit", L"00", WS_VISIBLE | WS_CHILD | WS_BORDER, 390, 50, 20, 20, hWnd,
-        NULL, NULL, NULL);
+    hHours = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 385, 50, 20, 20, hWnd,
+        NULL, NULL, NULL);//390
 
     CreateWindowW(L"Button", L"Mouse Button", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 50, 80, 110, 75, hWnd, 
         NULL, NULL, NULL);
@@ -340,7 +341,7 @@ void AddControls(HWND hWnd)
     CreateWindowW(L"Button", L"mouse-down", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 300, 125, 100, 20, hWnd,
         (HMENU)MOUSE_DOWN, NULL, NULL);
 
-    CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 75, 260, 175, 50, hWnd, (HMENU)START,
+    CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 50, 260, 175, 50, hWnd, (HMENU)START,
         NULL, NULL);
     CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 250, 260, 175, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
@@ -349,8 +350,26 @@ void AddControls(HWND hWnd)
     SendMessage(hMouseClick, BM_SETCHECK, BST_CHECKED, 0);
 }
 DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {
-    
-    userMouse.MouseOutput();
+    while (AutoClick == enable)
+    {
+        if(Pause == disable)
+        {
+            if (mouseClickMode) {
+                userMouse.Click();
+                Sleep(interval);
+            }
+            if (mouseDownMode) {
+                userMouse.MouseDown();
+                Sleep(1000);
+            }
+        }
+        if (GetAsyncKeyState(VK_F3)) {
+            if (Pause) {
+                Pause = disable;
+            }
+            AutoClick = disable;
+        }
+    }
 
     return 0;
 }

@@ -10,9 +10,7 @@ class MouseClick {
 			mouseInputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 			mouseInputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
 		}
-		void SetInterval(DWORD userInterval) {
-			userInterval = interval;
-		}
+
 		void SetLeftClick() {
 			mouseInputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
 			mouseInputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
@@ -23,31 +21,28 @@ class MouseClick {
 		}
 		void Click() {
 			SendInput(ARRAYSIZE(mouseInputs), mouseInputs, sizeof(INPUT));
-			Sleep(interval);
+			
 		}
 		void MouseDown() {
 			SendInput(1, mouseInputs, sizeof(INPUT));
-			Sleep(1000);
-		}
-		void MouseOutput() {
-			if (mouseClick) {
-				Click();
-			}
-			if (mouseDown) {
-				MouseDown();
-			}
 		}
 		void SetMouseClick() {
-			mouseClick = true;
-			mouseDown = false;
+			mouseClickMode = true;
+			mouseDownMode = false;
 		}
 		void SetMouseDown() {
-			mouseClick = false;
-			mouseDown = true;
+			mouseClickMode = false;
+			mouseDownMode = true;
+		}
+		bool IsClickModeOn() const{
+			return mouseClickMode;
+		}
+		bool IsDownModeOn() const {
+			return mouseDownMode;
 		}
 	private:
-		bool mouseClick = true;
-		bool mouseDown = false;
+		bool mouseClickMode = true;
+		bool mouseDownMode = false;
 		DWORD interval = 0;
 		INPUT mouseInputs[2] = {};
 };

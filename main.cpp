@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
+#include <windowsx.h>
 #include "resource.h"
 #include "mouseClicks.h"
 
@@ -17,9 +18,12 @@ const int MOUSE_CLICK = 8;
 const int MOUSE_DOWN = 9;
 const int MILLISECONDS_IN_A_DAY = 86400000;
 const int IDT_TIMER1 = 10;
+const int TIMER_ON = 11;
+const int TIMER_OFF = 12;
 enum Status { disable, enable };
 Status AutoClick = disable;
 Status Pause = disable;
+Status Timer = disable;
 
 MouseClick userMouse;
 
@@ -47,6 +51,7 @@ HWND hMilliseconds;
 HWND hSeconds;
 HWND hMinutes;
 HWND hHours;
+HWND hStart;
 HWND parentHwnd;
 DWORD interval;
 void GetInterval(DWORD& interval);
@@ -160,6 +165,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case MENU2:
             break;
+        case TIMER_ON:
+            Timer = enable;
+            break;
+        case TIMER_OFF:
+            Timer = disable;
         case LEFT_BUTTON:
             userMouse.SetLeftClick();
             break;
@@ -186,7 +196,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     0,                      // use default creation flags 
                     NULL);
             }
-            SetTimer(hWnd, IDT_TIMER1, 5000, NULL);
+            if(Timer == enable)
+            {
+                SetTimer(hWnd, IDT_TIMER1, 5000, NULL);
+            }
+            Button_Enable(hStart, false);
             Sleep(100);
 
             break;
@@ -195,6 +209,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (Pause) {
                 Pause = disable;
             }
+            if (Timer == enable) {
+                KillTimer(hWnd, IDT_TIMER1);
+            }
+            Button_Enable(hStart, true);
             CloseHandle(hThread);
             break;
 
@@ -308,7 +326,7 @@ void AddMenu(HWND hWnd)
 }
 void AddControls(HWND hWnd)
 {
-    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT, 50, 30, 60, 15, hWnd,
+    CreateWindowW(L"static", L"Interval", WS_VISIBLE | WS_CHILD | SS_LEFT , 50, 30, 60, 15, hWnd,
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"milliseconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 50, 50, 85, 20, hWnd,
         NULL, NULL, NULL);
@@ -325,8 +343,22 @@ void AddControls(HWND hWnd)
     CreateWindowW(L"static", L"hours:", WS_VISIBLE | WS_CHILD | SS_CENTER, 340, 50, 45, 20, hWnd,
         NULL, NULL, NULL);
     hHours = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 385, 50, 20, 20, hWnd,
-        NULL, NULL, NULL);//390
+        NULL, NULL, NULL);
 
+    CreateWindowW(L"static", L"Timer:", WS_VISIBLE | WS_CHILD | SS_CENTER, 125, 80, 110, 75, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"Button", L"on", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 210, 80, 40, 20, hWnd,
+       (HMENU)TIMER_ON, NULL, NULL);
+    HWND hTimerOff = CreateWindowW(L"Button", L"off", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 250, 80, 40, 20, hWnd,
+        (HMENU)LEFT_BUTTON, NULL, NULL);
+    CreateWindowW(L"static", L"minutes:", WS_VISIBLE | WS_CHILD | SS_CENTER, 175, 130, 60, 20, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 237, 130, 20, 20, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"static", L"hours:", WS_VISIBLE | WS_CHILD | SS_CENTER, 190, 100, 45, 20, hWnd,
+        NULL, NULL, NULL);
+    CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 237 , 100, 20, 20, hWnd,
+        NULL, NULL, NULL);
     CreateWindowW(L"Button", L"Mouse Button", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 50, 80, 110, 75, hWnd, 
         NULL, NULL, NULL);
     HWND hLeftButton = CreateWindowW(L"Button", L"left-click", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP,60, 100, 80, 20, hWnd,
@@ -338,14 +370,17 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     HWND hMouseClick = CreateWindowW(L"Button", L"mouse-click", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 300, 100, 95, 20, hWnd,
         (HMENU)MOUSE_CLICK, NULL, NULL);
-    CreateWindowW(L"Button", L"mouse-down", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 300, 125, 100, 20, hWnd,
+    CreateWindowW(L"Button", L"mouse-down", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON , 300, 125, 100, 20, hWnd,
         (HMENU)MOUSE_DOWN, NULL, NULL);
 
-    CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD, 50, 260, 175, 50, hWnd, (HMENU)START,
+
+
+    hStart = CreateWindowW(L"Button", L"Start(F2)", WS_VISIBLE | WS_CHILD , 50, 260, 175, 50, hWnd, (HMENU)START,
         NULL, NULL);
     CreateWindowW(L"Button", L"Stop(F3)", WS_VISIBLE | WS_CHILD, 250, 260, 175, 50, hWnd, (HMENU)STOP,
         NULL, NULL);
-
+    
+    SendMessage(hTimerOff, BM_SETCHECK, BST_CHECKED, 0);
     SendMessage(hLeftButton, BM_SETCHECK, BST_CHECKED, 0);
     SendMessage(hMouseClick, BM_SETCHECK, BST_CHECKED, 0);
 }
@@ -367,6 +402,7 @@ DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {
             if (Pause) {
                 Pause = disable;
             }
+            Button_Enable(hStart, true);
             AutoClick = disable;
         }
     }

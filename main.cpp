@@ -53,8 +53,16 @@ HWND hMinutes;
 HWND hHours;
 HWND hStart;
 HWND parentHwnd;
+HWND hTimerMinutes;
+HWND hTimerHours;
+HWND hMainApplication;
+
 DWORD interval;
 void GetInterval(DWORD& interval);
+DWORD userTime;
+void GetUserTime(DWORD& interval);
+
+void StopClicker();
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -115,7 +123,7 @@ int WINAPI WinMain(
         hInstance,
         NULL
     );
-
+    hMainApplication = hWnd;
     if (!hWnd)
     {
         MessageBox(NULL,
@@ -198,7 +206,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if(Timer == enable)
             {
-                SetTimer(hWnd, IDT_TIMER1, 5000, NULL);
+                GetUserTime(userTime);
+                if(userTime > 0)
+                {
+                    SetTimer(hWnd, IDT_TIMER1, userTime, NULL);
+                }
             }
             Button_Enable(hStart, false);
             Sleep(100);
@@ -219,10 +231,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_TIMER:
-        AutoClick = disable;
-        if (Pause) {
-            Pause = disable;
-        }
+        StopClicker();
         break;
     case WM_CREATE:
         AddMenu(hWnd);
@@ -353,12 +362,13 @@ void AddControls(HWND hWnd)
         (HMENU)LEFT_BUTTON, NULL, NULL);
     CreateWindowW(L"static", L"minutes:", WS_VISIBLE | WS_CHILD | SS_CENTER, 175, 130, 60, 20, hWnd,
         NULL, NULL, NULL);
-    CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 237, 130, 20, 20, hWnd,
+    hTimerMinutes = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 237, 130, 20, 20, hWnd,
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"hours:", WS_VISIBLE | WS_CHILD | SS_CENTER, 190, 100, 45, 20, hWnd,
         NULL, NULL, NULL);
-    CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 237 , 100, 20, 20, hWnd,
+    hTimerHours = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 237 , 100, 20, 20, hWnd,
         NULL, NULL, NULL);
+
     CreateWindowW(L"Button", L"Mouse Button", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 50, 80, 110, 75, hWnd, 
         NULL, NULL, NULL);
     HWND hLeftButton = CreateWindowW(L"Button", L"left-click", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP,60, 100, 80, 20, hWnd,
@@ -399,11 +409,7 @@ DWORD WINAPI clickingThreadFunc(LPVOID lpParam) {
             }
         }
         if (GetAsyncKeyState(VK_F3)) {
-            if (Pause) {
-                Pause = disable;
-            }
-            Button_Enable(hStart, true);
-            AutoClick = disable;
+            StopClicker();
         }
     }
 
@@ -438,4 +444,34 @@ void GetInterval(DWORD& interval) {
     if (interval < 100) {//in case milliseconds = 0
         interval = 100;
     }
+}
+void GetUserTime(DWORD& interval) {
+    interval = 0;
+
+    TCHAR userInput[4];
+
+    int addMinutes;
+    GetWindowText(hTimerMinutes, userInput, 3);
+    addMinutes = _ttoi(userInput);
+    interval += addMinutes * 60000;
+
+    int addHours;
+    GetWindowText(hTimerHours, userInput, 3);
+    addHours = _ttoi(userInput);
+    interval += addHours * 3600000;
+    if (interval > MILLISECONDS_IN_A_DAY) {
+        interval = MILLISECONDS_IN_A_DAY;
+    }
+}
+void StopClicker() {
+    AutoClick = disable;
+    if (Pause) {
+        Pause = disable;
+    }
+    if (Timer == enable) {
+        KillTimer(hMainApplication, IDT_TIMER1);
+    }
+    Button_Enable(hStart, true);
+    CloseHandle(hThread);
+
 }

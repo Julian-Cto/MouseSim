@@ -1,8 +1,14 @@
+/*
+TO DO:
+- add customizeable hotkeys
+- add mouse clicks on defined screen coordinates
+*/
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
 #include <windowsx.h>
 #include <sstream>
+#include <cstring>
 #include "resource.h"
 #include "mouseClicks.h"
 
@@ -43,10 +49,14 @@ HWND hTimerHoursLabel;
 HWND hTimerMinutesLabel;
 HWND hMainApplication;
 
+DWORD interval;
+DWORD userTime;
+
 HBRUSH hbrBkgnd = NULL;
+
 // The main window class name.
-static TCHAR szWindowClass[] = _T("MouseSiml");
-static TCHAR szTitle[] = _T("MouseSiml");// potential name: Rage Mouse - Daniel
+static TCHAR szWindowClass[] = _T("MouseSim");
+static TCHAR szTitle[] = _T("MouseSim");
 
 // Stored instance handle for use in Win32 API calls such as FindResource
 HINSTANCE hInst;
@@ -57,22 +67,18 @@ HANDLE hThread;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 DWORD WINAPI clickingThreadFunc(LPVOID lpParam);
 
-//LRESULT CALLBACK EditSubclassProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 // Application menu
 void AddMenu(HWND);
 HMENU hMenu;
 
-// Controls function
 void AddControls(HWND);
-
-DWORD interval;
 void GetInterval(DWORD& interval);
-DWORD userTime;
 void GetUserTime(DWORD& interval);
-
+bool IsCursorUnderApp(HWND);
 void StopClicker();
+void UpdateSettings(HWND hWnd);
 void StartClicker(HWND);
-int ParseToInt(char* str);
+int ParseToInt(const char* str);
 // AKA int main(){}
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -128,7 +134,7 @@ int WINAPI WinMain(
         szTitle,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        450, 400,
+        450, 350,
         NULL,
         NULL,
         hInstance,
@@ -181,6 +187,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
 
         case MENU2:
+            //to be completed
             break;
         case TIMER_ON:
             Timer = enable;
@@ -192,9 +199,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DestroyWindow(hDisableMinutes);
             }
             //replaces greyed-out windows for user to interacte with
-            hTimerHours = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 125, 175, 20, 20, hWnd,
+            hTimerHours = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 125, 175, 20, 20, hWnd,
                 NULL, NULL, NULL);
-            hTimerMinutes = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 175, 20, 20, hWnd,
+            hTimerMinutes = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 175, 20, 20, hWnd,
                 NULL, NULL, NULL);
             Button_Enable(hTimerHoursLabel , true);
             Button_Enable(hTimerMinutesLabel, true);
@@ -208,9 +215,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DestroyWindow(hTimerMinutes);
             }
             //recreates the greyed-out input boxes
-            hDisableHours = CreateWindowW(L"static", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 125, 175, 20, 20, hWnd,
+            hDisableHours = CreateWindowW(L"static", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 125, 175, 20, 20, hWnd,
                 NULL, NULL, NULL);
-            hDisableMinutes = CreateWindowW(L"static", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 175, 20, 20, hWnd,
+            hDisableMinutes = CreateWindowW(L"static", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 175, 20, 20, hWnd,
                 NULL, NULL, NULL);
             Button_Enable(hDisableHours, false);
             Button_Enable(hDisableMinutes, false);
@@ -223,6 +230,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case RIGHT_BUTTON:
             userMouse.SetRightClick();
+            break;
 		case MOUSE_CLICK:
             userMouse.SetMouseClick();
             break;
@@ -236,7 +244,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             StopClicker();
             break;
         case CONTROLS:
-            
+            //to be completed
             break;
         }
         break;
@@ -263,7 +271,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         hdc = (HDC)wParam;
         SetBkColor(hdc, RGB(255, 255, 255)); // Set the background color to white
         return (INT_PTR)hbrBkgnd;
-
     case WM_PAINT:
     {
         hdc = BeginPaint(hWnd, &ps);
@@ -289,50 +296,60 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (hbrBkgnd) {
             DeleteObject(hbrBkgnd); // Clean up the brush
         }
-        if(hThread)
-        {
-            CloseHandle(hThread); //close clicking thread if it exist
+        if (hThread) {
+            CloseHandle(hThread); // Close clicking thread if it exists
+        }
+        if (hMilliseconds) {
+            DestroyWindow(hMilliseconds);
+        }
+        if (hSeconds) {
+            DestroyWindow(hSeconds);
+        }
+        if (hMinutes) {
+            DestroyWindow(hMinutes);
+        }
+        if (hHours) {
+            DestroyWindow(hHours);
+        }
+        if (hStart) {
+            DestroyWindow(hStart);
+        }
+        if (hTimerMinutes) {
+            DestroyWindow(hTimerMinutes);
+        }
+        if (hTimerHours) {
+            DestroyWindow(hTimerHours);
+        }
+        if (hDisableMinutes) {
+            DestroyWindow(hDisableMinutes);
+        }
+        if (hDisableHours) {
+            DestroyWindow(hDisableHours);
+        }
+        if (hTimerHoursLabel) {
+            DestroyWindow(hTimerHoursLabel);
+        }
+        if (hTimerMinutesLabel) {
+            DestroyWindow(hTimerMinutesLabel);
         }
         PostQuitMessage(0);
         break;
     default:
         if (Pause == enable) {
-            POINT cursorPos;
-            GetCursorPos(&cursorPos);
-            ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
-            HWND currentChildHwnd = ChildWindowFromPoint(hMainApplication, cursorPos);
-            HWND currentParentHwnd;
-            if (currentChildHwnd != hMainApplication)
-            {
-                currentParentHwnd = GetParent(currentChildHwnd);
-            }
-            else {
-                currentParentHwnd = currentChildHwnd;
-            }
-            if (currentParentHwnd != hMainApplication) {
+            if (!IsCursorUnderApp(hWnd)) {
                 Pause = disable;
+                UpdateSettings(hWnd);
                 break;
             }
         }
         if(AutoClick == enable && Pause == disable)
         {
-            POINT cursorPos;
-            GetCursorPos(&cursorPos);
-            ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
-            HWND currentChildHwnd = ChildWindowFromPoint(hMainApplication, cursorPos);
-            HWND currentParentHwnd;
-            if (currentChildHwnd != hMainApplication)
-            {
-                currentParentHwnd = GetParent(currentChildHwnd);
-            }
-            else {
-                currentParentHwnd = currentChildHwnd;
-            }
-            if (currentParentHwnd == hMainApplication) {
+            if (IsCursorUnderApp(hWnd)) {
                 Pause = enable;
                 break;
             }
         }
+        //safe guard in case clicking thread dosen't close
         if (hThread && AutoClick == disable) {
             CloseHandle(hThread);
             hThread = NULL;
@@ -369,12 +386,11 @@ void AddControls(HWND hWnd)
         NULL, NULL, NULL);
     CreateWindowW(L"static", L"seconds:", WS_VISIBLE | WS_CHILD | SS_CENTER, 185, 50, 60, 20, hWnd,
         NULL, NULL, NULL);
-    hSeconds = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 252, 50, 20, 20, hWnd,
+    hSeconds = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 252, 50, 20, 20, hWnd,
         NULL, NULL, NULL);
-    //SetWindowSubclass(hMilliseconds, EditSubclassProc, 0, 0);
     CreateWindowW(L"static", L"minutes:", WS_VISIBLE | WS_CHILD | SS_CENTER, 280, 50, 60, 20, hWnd,
         NULL, NULL, NULL);
-    hMinutes = CreateWindowW(L"Edit", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 348, 50, 20, 20, hWnd,
+    hMinutes = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 348, 50, 20, 20, hWnd,
         NULL, NULL, NULL);
 
     //displays the timer
@@ -386,12 +402,13 @@ void AddControls(HWND hWnd)
         (HMENU)TIMER_OFF, NULL, NULL);
     hTimerMinutesLabel = CreateWindowW(L"static", L"minutes:", WS_VISIBLE | WS_CHILD | SS_CENTER, 60, 175, 60, 15, hWnd,
         NULL, NULL, NULL);
-    hDisableMinutes = CreateWindowW(L"static", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 125, 175, 20, 20, hWnd,
+    hDisableMinutes = CreateWindowW(L"static", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 125, 175, 20, 20, hWnd,
         NULL, NULL, NULL);
     hTimerHoursLabel = CreateWindowW(L"static", L"hours:", WS_VISIBLE | WS_CHILD | SS_CENTER, 150, 175, 45, 20, hWnd,
         NULL, NULL, NULL);
-    hDisableHours = CreateWindowW(L"static", L"- -", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 175, 20, 20, hWnd,
+    hDisableHours = CreateWindowW(L"static", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, 200, 175, 20, 20, hWnd,
         NULL, NULL, NULL);
+
     //the timer is automatically off when the app starts so the buttons are disable in the code below
     Button_Enable(hDisableHours, false);
     Button_Enable(hDisableMinutes, false);
@@ -455,17 +472,16 @@ void GetInterval(DWORD& interval) {
     char userInput[4];
     int addMilliseconds;
     GetWindowText(hMilliseconds, userInput, 4);
-    addMilliseconds = _ttoi(userInput);
+    addMilliseconds = ParseToInt(userInput);
     interval += addMilliseconds;
 
     int addSeconds;
-    GetWindowText(hSeconds, userInput, 4);
-    userInput[3] = '/0';
+    GetWindowText(hSeconds, userInput, 3);
     addSeconds = ParseToInt(userInput);
     interval += addSeconds * 1000;
 
     int addMinutes;
-    GetWindowText(hMinutes, userInput, 4);
+    GetWindowText(hMinutes, userInput, 3);
     addMinutes = ParseToInt(userInput);
     interval += addMinutes * 60000;
 
@@ -482,12 +498,12 @@ void GetUserTime(DWORD& interval) {
 
     int addMinutes;
     GetWindowText(hTimerMinutes, userInput, 3);
-    addMinutes = _ttoi(userInput);
+    addMinutes = ParseToInt(userInput);
     interval += addMinutes * 60000;
 
     int addHours;
     GetWindowText(hTimerHours, userInput, 3);
-    addHours = _ttoi(userInput);
+    addHours = ParseToInt(userInput);
     interval += addHours * 3600000;
     if (interval > MILLISECONDS_IN_A_DAY) {
         interval = MILLISECONDS_IN_A_DAY;
@@ -504,6 +520,7 @@ void StopClicker() {
     }
     Button_Enable(hStart, true);
     CloseHandle(hThread);
+    hThread = NULL;
 
 }
 //gets settings set by the user and ignitiates the auto-clicker
@@ -533,37 +550,52 @@ void StartClicker(HWND hWnd) {
     Button_Enable(hStart, false);
     Sleep(100);
 }
-int ParseToInt(char* str){
-    if(str != '\0') {
-        if(isdigit(*str)) {
-            return ParseToInt(++str) + atoi(str);
+//parse the cstr from the user time inputs
+int ParseToInt(const char* str) {
+    std::stringstream parse;
+    if (str[0]){
+        for (int i = 0; str[i] != '\0'; i++) {
+            if (isdigit(str[i])) {
+                parse << str[i];
+
+            }
         }
-        return ParseToInt(++str);
+        if (!parse.str().empty()) {
+            int time;
+            parse >> time;
+            return time;
+        }
     }
     return 0;
 }
-    
-    
-   
-//int ParseToInt(char* str) {
-//    std::ostringstream parse;
-//    char *userTime;
-//    for (int i = 0; str; i++) {
-//        if (isdigit(str[i])) {
-//             parse << str[i];
-//             usertime << 
-//        }
-//    }
-//    return userTime ? atoi(userTime) : 0;
-//
-//}
-//LRESULT CALLBACK EditSubclassProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
-//{
-//    switch (message)
-//    {
-//    case WM_SETFOCUS:
-//        SetWindowText(hWnd, "");
-//        break;
-//    }
-//    return DefSubclassProc(hWnd, message, wParam, lParam);
-//}
+//checks whether the mouse is under the application for the purpose of pausing the auto clicker
+bool IsCursorUnderApp(HWND hWnd) {
+    POINT cursorPos;
+    GetCursorPos(&cursorPos);
+    ScreenToClient(hWnd, &cursorPos); // Convert screen coordinates to client coordinates
+    HWND currentChildHwnd = ChildWindowFromPoint(hMainApplication, cursorPos);
+    HWND currentParentHwnd;
+    if (currentChildHwnd != hMainApplication)
+    {
+        currentParentHwnd = GetParent(currentChildHwnd);
+    }
+    else {
+        currentParentHwnd = currentChildHwnd;
+    }
+    return (currentParentHwnd == hMainApplication);
+}
+//updates the clicking settings after the unpausing 
+void UpdateSettings(HWND hWnd) {
+    GetInterval(interval);
+    mouseClickMode = userMouse.IsClickModeOn();
+    mouseDownMode = userMouse.IsDownModeOn();
+    if (Timer == enable)
+    {
+        GetUserTime(userTime);
+        if (userTime > 0)
+        {
+            SetTimer(hWnd, IDT_TIMER1, userTime, NULL);
+        }
+    }
+}
+
